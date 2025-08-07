@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registro Gimnasio</title>
+  
+  <!-- Contenido de styles.css -->
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 10px;
+    }
+
+    .top-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .top-bar button.volver {
+      font-size: 20px;
+    }
+
+    input, textarea {
+      width: 100%;
+      box-sizing: border-box;
+      margin-bottom: 10px;
+    }
+
+    .scroll-x {
+      display: flex;
+      overflow-x: auto;
+      gap: 10px;
+    }
+
+    .tabla-columna {
+      min-width: 220px;
+      border: 1px solid #ccc;
+      padding: 10px;
+    }
+
+    .guardar-nuevo {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-content {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .headerGrupo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 0.5em;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .volver-btn-grupo {
+      position: absolute;
+      left: 0.5em;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1em;
+      cursor: pointer;
+    }
+
+    /* NUEVOS ESTILOS PARA BOTONES DE GRUPO */
+    .grupo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      margin: 20px 0;
+    }
+
+    .grupo-container button {
+      width: 200px;
+      padding: 10px 20px;
+      font-size: 16px;
+      text-align: center;
+      border: none;
+      border-radius: 8px;
+      background-color: #1976d2;
+      color: white;
+      cursor: pointer;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      transition: background-color 0.2s;
+    }
+
+    .grupo-container button:hover {
+      background-color: #125a9c;
+    }
+
+    /* Estilos específicos para los botones de la sección grupo */
+    .btn-grupo {
+      padding: 10px 10px; /* Aumentar altura */
+      text-align: center;
+      border: none;
+      border-radius: 8px;
+      background-color: #a6d7ff; /* Azul más suave */
+      color: black; /* Letras en negro */
+      cursor: pointer;
+      transition: background-color 0.2s;
+      margin-bottom: 5px; /* Separación entre botones en altura*/
+      margin-right: 10px; /* Separación a la derecha de cada botón */
+    }
+
+    /*Formato tabla vertical*/
+    .fila-serie {
+      display: grid;
+      grid-template-columns: 
+        40px   /* Col1: Serie */
+        10px   /* Col2: Espacio */
+        4ch    /* Col3: Reps */
+        10px   /* Col4: "x" */
+        5ch    /* Col5: Peso */
+        30px   /* Col6: Unidad */
+        10px   /* Col7: Espacio */
+        60px;  /* Col8: Descanso */
+      font-family: monospace;
+      align-items: center;
+      margin-bottom: 2px;
+    }
+
+    .fila-serie div:nth-child(3), /* Reps */
+    .fila-serie div:nth-child(5), /* Peso */
+    .fila-serie div:nth-child(8)  /* Descanso */ {
+      text-align: center;
+    }
+
+    .fila-serie-header {
+      font-weight: bold;
+      margin-top: 0.5em;
+    }
+  </style>
+
+</head>
+<body>
+  <!-- Contenido de index.html -->
+  <section id="inicio" class="seccion">
+    <h1>Registro de Entrenamiento</h1>
+    <div class="grupo-container">
+      <button onclick="irAGrupo('pecho')">Pecho</button>
+      <button onclick="irAGrupo('espalda')">Espalda</button>
+      <button onclick="irAGrupo('hombro')">Hombro</button>
+      <button onclick="irAGrupo('pierna')">Pierna</button>
+      <button onclick="irAGrupo('brazos')">Brazos</button>
+      <button onclick="irAGrupo('abdominales')">Abdominales</button>
+    </div>
+    <h2>Buscar ejercicio</h2>
+    <input type="search" id="buscador" placeholder="Ejercicio...">
+    <div id="resultados"></div>
+    <div id="usoLocalStorage" style="margin-top: 1em; font-weight: bold;"></div>
+    
+    <button onclick="exportarCSV()">💾 Hacer copia seguridad</button>
+
+    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5em; margin-top: 1em;">
+      <p style="font-size: 0.9em; margin: 0;">Restaurar copia de seguridad:</p>
+      <input type="file" id="importFile" onchange="importarCSV(event)" />
+    </div>
+
+  </section>
+
+  <!-- Contenido de grupo.html -->
+  <section id="grupo" class="seccion hidden">
+    <div class="headerGrupo">
+      <button class="volver-btn-grupo" onclick="volverInicio()">← Volver</button>
+      <h2 id="tituloGrupo">Grupo</h2>
+    </div>
+
+    <div id="ejercicios"></div>
+    <button onclick="añadirEjercicio()">+ Añadir ejercicio</button>
+  </section>
+
+  
+  <!-- Contenido de ejercicio.html -->
+  <section id="ejercicio" class="seccion hidden">
+    <div class="top-bar">
+      <button class="volver" onclick="volverAGrupo()">←</button>
+      <h2 id="nombreEjercicio"></h2>
+      <button onclick="editarNombre()">✏️</button>
+    </div>
+
+    <div class="registro-formulario">
+      <div class="scroll-x" id="contenedorScroll"></div>
+      <!--<button onclick="guardarEntrenamiento()">Guardar</button>-->
+    </div>
+
+    <!-- Modal de confirmación -->
+    <div id="confirmModal" class="modal hidden">
+      <div class="modal-content">
+        <p>¿Seguro que quieres borrar este entrenamiento?</p>
+        <button onclick="confirmarBorrado(true)">Sí</button>
+        <button onclick="confirmarBorrado(false)">No</button>
+      </div>
+    </div>
+  </section>
+
+  <script>
+  // ---------------------- Utilidades -----------------------
+  function mostrarSeccion(id) {
+    document.querySelectorAll('.seccion').forEach(seccion => {
+      seccion.classList.add('hidden');
+    });
+    document.getElementById(id).classList.remove('hidden');
+    localStorage.setItem("seccionActual", id);
+  }
+  window.onload = () => {
+    const seccion = localStorage.getItem("seccionActual") || "inicio";
+    mostrarSeccion(seccion);
+
+    if (seccion === "grupo") {
+      cargarGrupo();
+    } else if (seccion === "ejercicio") {
+      cargarEjercicio();
+    }
+  };
+  function getDB() {
+    return JSON.parse(localStorage.getItem('gymDB') || '{}');
+  }
+
+  function setDB(db) {
+    localStorage.setItem('gymDB', JSON.stringify(db));
+  }
+
+  // ---------------------- Navegación -----------------------
+  function irAGrupo(grupo) {
+    localStorage.setItem('grupoActual', grupo);
+    mostrarSeccion('grupo');
+    cargarGrupo();
+  }
+
+  function volverInicio() {
+    mostrarSeccion('inicio');
+  }
+
+  function volverAGrupo() {
+    mostrarSeccion('grupo');
+    cargarGrupo();
+  }
+
+  // ---------------------- Cargar grupo -----------------------
+  function cargarGrupo() {
+    const grupo = localStorage.getItem("grupoActual");
+    const titulo = document.getElementById("tituloGrupo");
+    const contenedor = document.getElementById("ejercicios");
+    const db = getDB();
+
+    titulo.textContent = grupo.charAt(0).toUpperCase() + grupo.slice(1);
+    contenedor.innerHTML = ""; // limpiar contenido anterior
+
+    if (!db[grupo]) db[grupo] = [];
+
+    db[grupo].sort((a, b) => {
+      const ad = db[`${grupo}_data_${a}`] || [];
+      const bd = db[`${grupo}_data_${b}`] || [];
+      const at = ad.length ? ad[ad.length - 1].timestamp : 0;
+      const bt = bd.length ? bd[bd.length - 1].timestamp : 0;
+      return bt - at;
+    });
+
+    db[grupo].forEach(nombre => {
+      const btn = document.createElement("button");
+      btn.textContent = nombre;
+      btn.classList.add("btn-grupo");
+      btn.onclick = () => {
+        localStorage.setItem("ejercicioActual", nombre);
+        mostrarSeccion('ejercicio');
+        cargarEjercicio();
+      };
+      contenedor.appendChild(btn);
+    });
+
+    setDB(db);
+  }
+
+  function añadirEjercicio() {
+    const nombre = prompt("Nombre del ejercicio:");
+    if (!nombre) return;
+    const grupo = localStorage.getItem("grupoActual");
+    const db = getDB();
+    if (!db[grupo]) db[grupo] = [];
+    if (!db[grupo].includes(nombre)) db[grupo].unshift(nombre);
+    setDB(db);
+    cargarGrupo();
+  }
+
+  // ---------------------- Cargar ejercicio -----------------------
+  function cargarEjercicio() {
+    const grupo = localStorage.getItem("grupoActual");
+    const nombre = localStorage.getItem("ejercicioActual");
+    const h2 = document.getElementById("nombreEjercicio");
+    const contenedor = document.getElementById("contenedorScroll");
+    h2.textContent = nombre;
+    contenedor.innerHTML = "";
+
+    const db = getDB();
+    const key = `${grupo}_data_${nombre}`;
+    if (!db[key]) db[key] = [];
+
+    contenedor.appendChild(crearTablaVertical({}, -1));
+    db[key].slice().reverse().forEach((ent, i) => {
+      contenedor.appendChild(crearTablaVertical(ent, db[key].length - 1 - i));
+    });
+  }
+
+  function crearTablaVertical(data, index) {
+    const grupo = localStorage.getItem("grupoActual");
+    const nombre = localStorage.getItem("ejercicioActual");
+    const db = getDB();
+    const key = `${grupo}_data_${nombre}`;
+
+    const div = document.createElement("div");
+    div.className = "tabla-columna";
+
+    if (data.series) {
+      // Cabecera: fecha, orden, comentario
+      const fecha = new Date(data.timestamp);
+      const dia = String(fecha.getDate()).padStart(2, '0');
+      const mes = String(fecha.getMonth() + 1).padStart(2, '0'); // Enero = 0
+      const año = fecha.getFullYear();
+      const hora = String(fecha.getHours()).padStart(2, '0');
+      const min = String(fecha.getMinutes()).padStart(2, '0');
+
+      div.innerHTML += `
+        <strong>${dia}/${mes}/${año} ${hora}:${min}</strong><br>
+        <strong>Orden:</strong> ${data.orden || '-'}<br>
+        <p><em style="font-size: 0.8em;">${data.comentario || '-'}</em></p>
+      `;
+
+      // Encabezado S00
+      const encabezado = document.createElement("div");
+      encabezado.className = "fila-serie fila-serie-header";
+
+      encabezado.innerHTML = `
+        <div></div>
+        <div></div>
+        <div colspan="4">Ejercicio</div>
+        <div></div>
+        <div></div>
+        <div></div>
+        <div>Descanso</div>
+      `;
+      div.appendChild(encabezado);
+
+      // Series reales
+      data.series.forEach((s, i) => {
+        if (!s) return;
+
+        const reps = s.reps || 0;
+        const peso = s.peso?.toString().trim() || "0";
+        const descanso = s.descanso || "";
+        const unidad = peso.includes("lb") ? "lb" : "kg"; // ajusta según tu lógica
+
+        if (reps > 0 || parseFloat(peso) > 0) {
+          const fila = document.createElement("div");
+          fila.className = "fila-serie";
+
+          // Si el descanso es 0:00, asignamos cadena vacía ""
+          const descansoHTML = (descanso === "0:00") ? "" : descanso;
+
+          fila.innerHTML = `
+            <div>S${String(i + 1).padStart(2, '0')}</div>
+            <div></div>
+            <div>${reps}</div>
+            <div>x</div>
+            <div>${peso.replace(/[^\d.,]/g, '')}</div>
+            <div>${unidad}</div>
+            <div></div>
+            <div>${descansoHTML}</div>
+          `;
+
+          div.appendChild(fila);
+        }
+      });
+
+
+      // Botón de borrar
+      const btn = document.createElement("button");
+      btn.textContent = "🗑️ Borrar";
+      btn.className = "borrar-btn";
+      btn.onclick = () => {
+        db[key].splice(index, 1);
+        setDB(db);
+        // exportarCSV();
+        cargarEjercicio();
+      };
+      div.appendChild(btn);
+
+    } else {
+      // Entrenamiento nuevo
+      div.innerHTML = `
+        <strong>Nuevo entrenamiento</strong><br><br>
+        <label>Orden de ejercicio:</label><br>
+        <input type="number" id="orden" placeholder="1" style="width: 60px;"><br><br>
+        <label>Comentario:</label><br>
+        <textarea id="comentario" rows="2" placeholder="Ej: pausa isométrica, drop set..." style="width: 100%;"></textarea><br><br>
+      `;
+
+      const series = [];
+      const descansos = [];
+
+      for (let i = 0; i < 10; i++) {
+        const serie = document.createElement("p");
+        serie.id = `serie-${i}`;
+        serie.style.display = i === 0 ? "block" : "none";
+        serie.innerHTML = `
+          <strong>Serie ${i + 1}</strong><br>
+          <label>Reps:</label><input type="number" class="reps" min="0"><br>
+          <label>Peso:</label>
+          <input type="number" class="peso" min="0" style="width: 60px;">
+          <select class="unidad">
+            <option value="kg">kg</option>
+            <option value="lb">lb</option>
+          </select>
+        `;
+        div.appendChild(serie);
+        series.push(serie);
+
+        if (i < 9) {
+          const descanso = document.createElement("p");
+          descanso.id = `descanso-${i}`;
+          descanso.style.display = i === 0 ? "block" : "none";
+          descanso.innerHTML = `
+            <strong>Descanso tras serie ${i + 1}</strong><br>
+            <label>Min:</label> <input type="number" class="desc-min" min="0" style="width:40px;">
+            <label>Seg:</label> <input type="number" class="desc-seg" min="0" max="59" style="width:40px;">
+          `;
+          div.appendChild(descanso);
+          descansos.push(descanso);
+        }
+      }
+
+      const guardarBtn = document.createElement("button");
+      guardarBtn.textContent = "Guardar";
+      guardarBtn.onclick = guardarEntrenamiento;
+      guardarBtn.id = "guardarBtn";
+      guardarBtn.style.marginTop = "1em";
+      // Añadir el emoji de disco duro al principio del botón
+      guardarBtn.innerHTML = `💾 ${guardarBtn.textContent}`;
+      // Aquí aumentamos el tamaño del botón
+      //guardarBtn.style.fontSize = "1.2em";  // Aumenta el tamaño de la fuente
+      guardarBtn.style.padding = "12px 24px";  // Aumenta el tamaño del botón (más alto y más ancho)
+      guardarBtn.style.borderRadius = "8px";  // Bordes redondeados para mejorar la apariencia
+      div.appendChild(guardarBtn);
+
+      setTimeout(() => {
+        const repsInputs = div.querySelectorAll(".reps");
+        const pesoInputs = div.querySelectorAll(".peso");
+        
+        cargarDraft();
+        
+        function actualizarVisibilidad() {
+          let ultimaVisible = 0;
+
+          for (let i = 0; i < 10; i++) {
+            const repsVal = parseInt(repsInputs[i]?.value || 0);
+            const pesoVal = parseFloat(pesoInputs[i]?.value || 0);
+            const mostrar = repsVal > 0 || pesoVal > 0;
+            const descanso = descansos[i];
+            const siguienteSerie = series[i + 1];
+
+            if (i < 9 && descanso) descanso.style.display = mostrar ? "block" : "none";
+            if (siguienteSerie) siguienteSerie.style.display = mostrar ? "block" : "none";
+            if (mostrar) ultimaVisible = i + 1;
+          }
+
+          const after = descansos[ultimaVisible - 0] || series[ultimaVisible - 0] || series[0];
+          if (after && guardarBtn) {
+            after.insertAdjacentElement("afterend", guardarBtn);
+          }
+        }
+
+        repsInputs.forEach(input => input.addEventListener("input", actualizarVisibilidad));
+        pesoInputs.forEach(input => input.addEventListener("input", actualizarVisibilidad));
+        actualizarVisibilidad();
+
+        // Draft
+        repsInputs.forEach(input => input.addEventListener("input", guardarDraft));
+        pesoInputs.forEach(input => input.addEventListener("input", guardarDraft));
+        div.querySelectorAll(".unidad").forEach(input => input.addEventListener("input", guardarDraft));
+        div.querySelectorAll(".desc-min").forEach(input => input.addEventListener("input", guardarDraft));
+        div.querySelectorAll(".desc-seg").forEach(input => input.addEventListener("input", guardarDraft));
+        document.getElementById("comentario")?.addEventListener("input", guardarDraft);
+        document.getElementById("orden")?.addEventListener("input", guardarDraft);
+      }, 0);
+    }
+
+    return div;
+  }
+
+
+  function guardarEntrenamiento() {
+    // 🔧 Reemplazar comas por puntos en todos los campos antes de leer valores
+    document.querySelectorAll("input, textarea, select").forEach(el => {
+      if (typeof el.value === "string") {
+        el.value = el.value.replaceAll(",", ".");
+      }
+    });
+    const grupo = localStorage.getItem("grupoActual");
+    const nombre = localStorage.getItem("ejercicioActual");
+    const comentario = document.getElementById("comentario").value;
+    const orden = parseInt(document.getElementById("orden").value);
+    const reps = Array.from(document.querySelectorAll(".reps")).map(el => parseInt(el.value) || 0);
+    const pesos = Array.from(document.querySelectorAll(".peso"));
+    const unidades = Array.from(document.querySelectorAll(".unidad"));
+    const descMin = Array.from(document.querySelectorAll(".desc-min"));
+    const descSeg = Array.from(document.querySelectorAll(".desc-seg"));
+
+    const series = pesos.map((p, i) => {
+      const peso = parseFloat(p.value) || 0;
+      const unidad = unidades[i]?.value || "kg";
+      return {
+        reps: reps[i],
+        peso: `${peso} ${unidad}`,
+        descanso: i < 9 ? `${parseInt(descMin[i]?.value || 0)}:${parseInt(descSeg[i]?.value || 0).toString().padStart(2, '0')}` : null
+      };
+    });
+
+    const db = getDB();
+    const key = `${grupo}_data_${nombre}`;
+    db[key] = db[key] || [];
+    db[key].push({ timestamp: Date.now(), comentario, orden, series });
+    setDB(db);
+    // exportarCSV();
+    limpiarDraft();
+    cargarEjercicio();
+  }
+
+  // ---------------------- Draft Auto Guardado -----------------------
+
+  function getDraftKey() {
+    const grupo = localStorage.getItem("grupoActual");
+    const ejercicio = localStorage.getItem("ejercicioActual");
+    return `draft_${grupo}_${ejercicio}`;
+  }
+
+  function guardarDraft() {
+    const reps = Array.from(document.querySelectorAll(".reps")).map(el => parseInt(el.value) || 0);
+    const pesos = Array.from(document.querySelectorAll(".peso")).map(el => parseFloat(el.value) || 0);
+    const unidades = Array.from(document.querySelectorAll(".unidad")).map(el => el.value);
+    const descMin = Array.from(document.querySelectorAll(".desc-min")).map(el => parseInt(el.value) || 0);
+    const descSeg = Array.from(document.querySelectorAll(".desc-seg")).map(el => parseInt(el.value) || 0);
+    const orden = parseInt(document.getElementById("orden")?.value) || "";
+    const comentario = document.getElementById("comentario")?.value || "";
+
+    const draft = { reps, pesos, unidades, descMin, descSeg, orden, comentario };
+    localStorage.setItem(getDraftKey(), JSON.stringify(draft));
+  }
+
+  function cargarDraft() {
+    const draftStr = localStorage.getItem(getDraftKey());
+    if (!draftStr) return;
+
+    const draft = JSON.parse(draftStr);
+    if (!draft || !draft.reps) return;
+
+    // Solo cargar si serie 1 está vacía
+    const primeraReps = document.querySelector(".reps")?.value;
+    const primeraPeso = document.querySelector(".peso")?.value;
+
+    if (primeraReps || primeraPeso) return;
+
+    // Cargar valores a los campos
+    document.querySelectorAll(".reps").forEach((el, i) => el.value = draft.reps?.[i] ?? "");
+    document.querySelectorAll(".peso").forEach((el, i) => el.value = draft.pesos?.[i] ?? "");
+    document.querySelectorAll(".unidad").forEach((el, i) => el.value = draft.unidades?.[i] ?? "kg");
+    document.querySelectorAll(".desc-min").forEach((el, i) => el.value = draft.descMin?.[i] ?? "");
+    document.querySelectorAll(".desc-seg").forEach((el, i) => el.value = draft.descSeg?.[i] ?? "");
+    if (document.getElementById("orden")) document.getElementById("orden").value = draft.orden || "";
+    if (document.getElementById("comentario")) document.getElementById("comentario").value = draft.comentario || "";
+  }
+
+  function limpiarDraft() {
+    // Recorremos todas las claves del localStorage
+    Object.keys(localStorage).forEach(key => {
+      // Si la clave comienza con "draft_", la eliminamos
+      if (key.startsWith("draft_")) {
+        localStorage.removeItem(key);
+      }
+    });
+  }
+
+  // ---------------------- Editar nombre -----------------------
+
+  function editarNombre() {
+    const grupo = localStorage.getItem("grupoActual");
+    const nombre = localStorage.getItem("ejercicioActual");
+    const nuevo = prompt("Nuevo nombre:", nombre);
+    if (!nuevo || nuevo === nombre) return;
+
+    const db = getDB();
+    const index = db[grupo].indexOf(nombre);
+    if (index !== -1) db[grupo][index] = nuevo;
+
+    db[`${grupo}_data_${nuevo}`] = db[`${grupo}_data_${nombre}`];
+    delete db[`${grupo}_data_${nombre}`];
+
+    setDB(db);
+    localStorage.setItem("ejercicioActual", nuevo);
+    cargarEjercicio();
+  }
+
+  // ---------------------- Buscador -----------------------
+  if (document.getElementById("buscador")) {
+    const db = getDB();
+    const buscador = document.getElementById("buscador");
+    const resultados = document.getElementById("resultados");
+
+    buscador.addEventListener("input", () => {
+      const val = buscador.value.toLowerCase();
+      resultados.innerHTML = "";
+
+      if (val === "") return; // no mostrar nada si está vacío
+
+      Object.keys(db).forEach(grupo => {
+        if (grupo.includes("_data_")) return;
+        db[grupo].forEach(nombre => {
+          if (nombre.toLowerCase().includes(val)) {
+            const btn = document.createElement("button");
+            btn.textContent = `[${grupo}] ${nombre}`;
+            btn.onclick = () => {
+              localStorage.setItem("grupoActual", grupo);
+              localStorage.setItem("ejercicioActual", nombre);
+              mostrarSeccion('ejercicio');
+              cargarEjercicio();
+            };
+            resultados.appendChild(btn);
+          }
+        });
+      });
+    });
+  }
+
+  // ---------------------- CSV -----------------------
+  function exportarCSV() {
+    const db = getDB();
+    let csv = "Grupo,Ejercicio,Fecha,Orden,Comentario,Serie,Reps,Peso,Descanso\n";
+    for (const key in db) {
+      if (!key.includes("_data_")) continue;
+      const [grupo, ejercicio] = key.split("_data_");
+      db[key].forEach(entry => {
+        if (!Array.isArray(entry.series)) return;
+        entry.series.forEach((serie, idx) => {
+          if (!serie) return;
+
+          const reps = serie.reps ?? "";
+          const peso = serie.peso ?? "";
+          let descanso = serie.descanso ?? "";
+          if (idx === 9) descanso = "0:00";  // Última serie
+          csv += `${grupo},${ejercicio},"${new Date(entry.timestamp).toISOString()}",${entry.orden || ""},"${entry.comentario || ""}",${idx + 1},${reps},${peso},"${descanso}"\n`;
+        });
+      });
+    }
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "registro_gimnasio.csv";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  function importarCSV(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+      const contenido = e.target.result;
+
+      // ✅ BORRAR TODO EL CONTENIDO PREVIO
+       localStorage.removeItem("gymDB");
+      // Dividir en líneas de forma robusta
+      const lineas = contenido.trim().split(/\r?\n/);
+      const encabezado = lineas.shift(); // descartar encabezado
+      const db = getDB();
+
+      for (let linea of lineas) {
+        // Eliminar comillas exteriores y dividir por coma dentro de comillas correctamente
+        linea = linea.trim();
+        if (linea.startsWith('"') && linea.endsWith('"')) {
+          linea = linea.slice(1, -1); // quitar comillas exteriores
+        }
+
+        const campos = linea.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // dividir por comas no encerradas en comillas
+
+        if (campos.length < 9) continue;
+
+        let [grupo, ejercicio, fecha, orden, comentario, serieStr, repsStr, peso, descanso] = campos;
+
+        grupo = grupo.trim();
+        ejercicio = ejercicio.trim();
+        fecha = fecha.trim().replaceAll('"', '');
+        comentario = comentario.trim().replaceAll('"', '');
+        descanso = descanso.trim().replaceAll('"', '');
+
+        // Asegurarse de que la fecha se convierte correctamente en un timestamp
+        const timestamp = new Date(fecha).getTime();
+        if (isNaN(timestamp)) {
+          console.error(`Error en el timestamp para la fecha: ${fecha}`);
+          continue; // Si no es válido, omitimos la entrada
+        }
+
+        const serieIndex = parseInt(serieStr) - 1;
+        const key = `${grupo}_data_${ejercicio}`;
+
+        if (!db[grupo]) db[grupo] = [];
+        if (!db[grupo].includes(ejercicio)) db[grupo].push(ejercicio);
+        if (!db[key]) db[key] = [];
+
+        let entry = db[key].find(e => e.timestamp === timestamp);
+        if (!entry) {
+          entry = {
+            timestamp,
+            orden: parseInt(orden),
+            comentario,
+            series: Array(10).fill(null)
+          };
+          db[key].push(entry);
+        }
+
+        const reps = parseInt(repsStr);
+        const pesoVal = peso.trim();
+
+        // Solo agregar si reps o peso es válido
+        if (reps > 0 || !pesoVal.startsWith("0")) {
+          entry.series[serieIndex] = {
+            reps,
+            peso: pesoVal,
+            descanso
+          };
+        }
+      }
+
+      setDB(db);
+      alert("Importación completada.");
+      location.reload();
+    };
+
+    reader.onerror = function (e) {
+      console.error("Error al leer el archivo:", e);
+      alert("Error al leer el archivo CSV.");
+    };
+
+    reader.readAsText(file);
+  }
+
+     // ---------------------- Reemplazar , introducidas por . -----------------------
+  document.addEventListener("input", function (event) {
+    const el = event.target;
+    if (el.tagName === "INPUT" || el.tagName === "TEXTAREA") {
+      if (typeof el.value === "string" && el.value.includes(",")) {
+        const pos = el.selectionStart;
+        el.value = el.value.replaceAll(",", ".");
+        el.setSelectionRange(pos, pos); // mantener posición del cursor
+      }
+    }
+  });
+
+</script>
+
+</body>
+</html>
