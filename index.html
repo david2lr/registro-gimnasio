@@ -83,6 +83,7 @@
       transform: translateY(-50%);
       font-size: 1em;
       cursor: pointer;
+      padding: 10px 18px;       /* Más alto y más ancho */
     }
 
     /* NUEVOS ESTILOS PARA BOTONES DE GRUPO */
@@ -153,6 +154,40 @@
       font-weight: bold;
       margin-top: 0.5em;
     }
+
+    /* Centrar "Serie X" con guiones solo en los lados */
+    [id^="serie-"] strong {
+      display: flex;               /* Contenedor flexible */
+      align-items: center;         /* Centrar verticalmente */
+      justify-content: center;     /* Centrar horizontalmente */
+      gap: 10px;                    /* Espacio entre guiones y texto */
+      font-weight: bold;
+    }
+
+    [id^="serie-"] strong::before,
+    [id^="serie-"] strong::after {
+      content: "";
+      flex: 1;                      /* Que ocupe todo el espacio libre */
+      border-bottom: 1px dashed #aaa; /* Línea de guiones (puedes usar solid si quieres guiones fijos) */
+    }
+
+    .ejercicio-div { /* la clase que tiene tus divs de ejercicios */
+      display: flex;
+      flex-direction: column; /* apila contenido verticalmente */
+      border: 1px solid #ccc;
+      padding: 10px;
+      width: 250px; 
+      height: 300px; /* altura fija para que se note */
+    }
+
+    .borrar-btn {
+      margin-top: auto; /* empuja el botón hasta el final */
+      background-color: #f88;
+      border: none;
+      padding: 0.5em 1em;
+      cursor: pointer;
+      border-radius: 5px;
+    }
   </style>
 
 </head>
@@ -185,19 +220,19 @@
   <!-- Contenido de grupo.html -->
   <section id="grupo" class="seccion hidden">
     <div class="headerGrupo">
-      <button class="volver-btn-grupo" onclick="volverInicio()">← Volver</button>
+      <button class="volver-btn-grupo" onclick="volverInicio()">🔙</button>
       <h2 id="tituloGrupo">Grupo</h2>
     </div>
 
     <div id="ejercicios"></div>
-    <button onclick="añadirEjercicio()">+ Añadir ejercicio</button>
+    <button onclick="añadirEjercicio()" style="padding: 8px 20px;">+ Añadir ejercicio</button>
   </section>
 
   
   <!-- Contenido de ejercicio.html -->
   <section id="ejercicio" class="seccion hidden">
     <div class="top-bar">
-      <button class="volver" onclick="volverAGrupo()">←</button>
+      <button class="volver" onclick="volverAGrupo()" style="font-size: 1em; padding: 10px 18px;">🔙</button>
       <h2 id="nombreEjercicio"></h2>
       <button onclick="editarNombre()">✏️</button>
     </div>
@@ -284,6 +319,26 @@
       const btn = document.createElement("button");
       btn.textContent = nombre;
       btn.classList.add("btn-grupo");
+
+      // 🔹 Comprobar si hay registro de hoy
+      const hoy = new Date();
+      const datosEjercicio = db[`${grupo}_data_${nombre}`] || [];
+      const ultimo = datosEjercicio.length ? datosEjercicio[datosEjercicio.length - 1].timestamp : null;
+
+      if (ultimo) {
+        const fechaRegistro = new Date(ultimo);
+        if (
+          fechaRegistro.getFullYear() === hoy.getFullYear() &&
+          fechaRegistro.getMonth() === hoy.getMonth() &&
+          fechaRegistro.getDate() === hoy.getDate()
+        ) {
+          // Si es de hoy, color más intenso
+          //btn.style.backgroundColor = "#005cb2"; //azul intenso
+          btn.style.backgroundColor = "#90ee90"; //verde
+          btn.style.color = "black";
+        }
+      }
+
       btn.onclick = () => {
         localStorage.setItem("ejercicioActual", nombre);
         mostrarSeccion('ejercicio');
@@ -375,6 +430,7 @@
 
         if (reps > 0 || parseFloat(peso) > 0) {
           const fila = document.createElement("div");
+          div.className = "ejercicio-div"; // <- importante para el flex
           fila.className = "fila-serie";
 
           // Si el descanso es 0:00, asignamos cadena vacía ""
@@ -413,7 +469,7 @@
       div.innerHTML = `
         <strong>Nuevo entrenamiento</strong><br><br>
         <label>Orden de ejercicio:</label><br>
-        <input type="number" id="orden" placeholder="1" style="width: 60px;"><br><br>
+        <input type="number" id="orden" placeholder="1, 2, 3..." style="width: 60px;"><br><br>
         <label>Comentario:</label><br>
         <textarea id="comentario" rows="2" placeholder="Ej: pausa isométrica, drop set..." style="width: 100%;"></textarea><br><br>
       `;
@@ -426,14 +482,23 @@
         serie.id = `serie-${i}`;
         serie.style.display = i === 0 ? "block" : "none";
         serie.innerHTML = `
-          <strong>Serie ${i + 1}</strong><br>
-          <label>Reps:</label><input type="number" class="reps" min="0"><br>
-          <label>Peso:</label>
-          <input type="number" class="peso" min="0" style="width: 60px;">
-          <select class="unidad">
-            <option value="kg">kg</option>
-            <option value="lb">lb</option>
-          </select>
+          <strong>Serie ${i + 1}</strong>
+          <div style="display: flex; gap: 20px; align-items: flex-end; margin-top: 5px;">
+            <div style="display: flex; flex-direction: column;">
+              <label>Reps</label>
+              <input type="number" class="reps" min="0" style="width: 60px; height: 21px;">
+            </div>
+            <div style="display: flex; flex-direction: column;">
+              <label>Peso</label>
+              <div style="display: flex; gap: 5px;">
+                <input type="number" class="peso" min="0" style="width: 60px; height: 21px;">
+                <select class="unidad" style="height: 21px;">
+                  <option value="kg">kg</option>
+                  <option value="lb">lb</option>
+                </select>
+              </div>
+            </div>
+          </div>
         `;
         div.appendChild(serie);
         series.push(serie);
@@ -443,7 +508,7 @@
           descanso.id = `descanso-${i}`;
           descanso.style.display = i === 0 ? "block" : "none";
           descanso.innerHTML = `
-            <strong>Descanso tras serie ${i + 1}</strong><br>
+            <label style="font-style: italic;">Descanso tras serie ${i + 1}</label><br>
             <label>Min:</label> <input type="number" class="desc-min" min="0" style="width:40px;">
             <label>Seg:</label> <input type="number" class="desc-seg" min="0" max="59" style="width:40px;">
           `;
@@ -543,7 +608,7 @@
     db[key] = db[key] || [];
     db[key].push({ timestamp: Date.now(), comentario, orden, series });
     setDB(db);
-    // exportarCSV();
+    exportarCSV();
     limpiarDraft();
     cargarEjercicio();
   }
@@ -595,10 +660,13 @@
   function limpiarDraft() {
     // Recorremos todas las claves del localStorage
     Object.keys(localStorage).forEach(key => {
-      // Si la clave comienza con "draft_", la eliminamos
-      if (key.startsWith("draft_")) {
-        localStorage.removeItem(key);
-      }
+      // a. Si la clave comienza con "draft_", la eliminamos, esto borra el borrador completo
+      //if (key.startsWith("draft_")) {
+      //  localStorage.removeItem(key);
+      //}
+
+      // b. Con esto sólo borramos el borrador del ejercicio actual en vez del borrador completo
+      localStorage.removeItem(getDraftKey());
     });
   }
 
@@ -674,11 +742,22 @@
       });
     }
 
+    // 📅 Generar nombre dinámico YYMMDD-HHMM
+    const now = new Date();
+    const pad = num => String(num).padStart(2, '0');
+    const YY = String(now.getFullYear()).slice(-2);
+    const MM = pad(now.getMonth() + 1);
+    const DD = pad(now.getDate());
+    const HH = pad(now.getHours());
+    const MIN = pad(now.getMinutes());
+    const SS = pad(now.getSeconds());
+    const filename = `backupWebGym_20${YY}${MM}${DD}-${HH}${MIN}${SS}.csv`;
+
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "registro_gimnasio.csv";
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -786,4 +865,3 @@
 
 </body>
 </html>
-
