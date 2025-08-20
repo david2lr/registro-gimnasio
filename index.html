@@ -61,6 +61,16 @@
       padding: 20px;
       border-radius: 10px;
       text-align: center;
+      max-width: 80vw;   /* Limita el ancho */
+      width: 90%;         /* Para que sea responsive en pantallas pequeñas */
+    }
+
+    .modal-content button {
+      font-size: 1.1em;   /* Aumenta ligeramente la fuente */
+      padding: 15px 30px; /* Más alto y ancho */
+      margin: 5px;        /* Espacio entre botones */
+      border-radius: 6px; /* Bordes redondeados */
+      cursor: pointer;    /* Cambio de cursor al pasar por encima */
     }
 
     .hidden {
@@ -245,9 +255,9 @@
     <!-- Modal de confirmación -->
     <div id="confirmModal" class="modal hidden">
       <div class="modal-content">
-        <p>¿Seguro que quieres borrar este entrenamiento?</p>
-        <button onclick="confirmarBorrado(true)">Sí</button>
-        <button onclick="confirmarBorrado(false)">No</button>
+        <p>⚠️ ¿Seguro que quieres borrar este entrenamiento? ⚠️</p>
+        <button id="confirmYes">Sí</button>
+        <button id="confirmNo">No</button>
       </div>
     </div>
   </section>
@@ -456,12 +466,43 @@
       const btn = document.createElement("button");
       btn.textContent = "🗑️ Borrar";
       btn.className = "borrar-btn";
+
+      // Listener del botón
       btn.onclick = () => {
-        db[key].splice(index, 1);
-        setDB(db);
-        // exportarCSV();
-        cargarEjercicio();
+        const modal = document.getElementById("confirmModal");
+        const yesBtn = document.getElementById("confirmYes");
+        const noBtn = document.getElementById("confirmNo");
+
+        if (!modal || !yesBtn || !noBtn) return;
+
+        modal.classList.remove("hidden"); // mostrar modal
+
+        // Limpiar event listeners anteriores
+        yesBtn.replaceWith(yesBtn.cloneNode(true));
+        noBtn.replaceWith(noBtn.cloneNode(true));
+
+        const yesBtnNew = document.getElementById("confirmYes");
+        const noBtnNew = document.getElementById("confirmNo");
+
+        yesBtnNew.onclick = () => {
+          db[key].splice(index, 1);
+          setDB(db);
+          cargarEjercicio();
+          modal.classList.add("hidden"); // ocultar modal
+        };
+
+        noBtnNew.onclick = () => {
+          modal.classList.add("hidden"); // solo cerramos modal
+        };
+
+        // Click fuera del modal-content = igual que No
+        modal.onclick = (e) => {
+          if (e.target === modal) {
+            modal.classList.add("hidden");
+          }
+        };
       };
+
       div.appendChild(btn);
 
     } else {
