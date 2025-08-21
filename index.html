@@ -2,8 +2,8 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Registro Gimnasio</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>MD GYM</title>
   
   <!-- Contenido de styles.css -->
   <style>
@@ -11,7 +11,41 @@
       font-family: sans-serif;
       margin: 10px;
     }
+    #tituloPrincipal {
+      text-align: center;
+      font-family: 'Poppins', sans-serif;
+      font-size: 3rem;
+      font-weight: 700;
+      color: #1976d2;               /* azul oscuro */
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin: 0.5em 0;
+      text-shadow: 2px 2px 8px rgba(13, 71, 161, 0.3); /* sombra sutil del mismo azul */
+    }
 
+    #buscarEjercicioTitulo {
+      text-align: center;
+      margin-top: 3em;
+    }
+
+    /* Centrar el input y ajustar ancho */
+    #buscador {
+      display: block;          /* Para que margin:auto funcione */
+      width: 85%;              /* 70% del ancho de la pantalla */
+      margin: 2em auto;        /* centrado horizontal, con espacio arriba y abajo */
+      padding: 0.5em 1em;      /* espacio interno */
+      font-size: 1rem;
+      box-sizing: border-box;  /* para que padding no aumente el ancho */
+      text-align: center;      /* centra el texto dentro del input */
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    /* Centrar el placeholder */
+    #buscador::placeholder {
+      text-align: center;
+      color: #888;             /* opcional, color gris claro */
+    }
     .top-bar {
       display: flex;
       align-items: center;
@@ -28,6 +62,17 @@
       margin-bottom: 10px;
     }
 
+    .boton-resultado {
+      background-color: #42a5f5;      /* azul claro */
+      color: white;                    /* texto blanco */
+      border: none;                    /* sin borde */
+      border-radius: 6px;              /* esquinas ligeramente redondeadas */
+      padding: 0.8em 0.8em;            /* menos alto y ancho */
+      margin: 0.2em 0;                 /* separación más pequeña */
+      font-size: 0.85rem;              /* texto más pequeño */
+      cursor: pointer;                 /* mano al pasar el mouse */
+      transition: all 0.2s ease;       /* animación suave */
+    }
     .scroll-x {
       display: flex;
       overflow-x: auto;
@@ -204,7 +249,7 @@
 <body>
   <!-- Contenido de index.html -->
   <section id="inicio" class="seccion">
-    <h1>Registro de Entrenamiento</h1>
+    <div id="tituloPrincipal">MD Gym</div>
     <div class="grupo-container">
       <button onclick="irAGrupo('pecho')">Pecho</button>
       <button onclick="irAGrupo('espalda')">Espalda</button>
@@ -213,18 +258,27 @@
       <button onclick="irAGrupo('brazos')">Brazos</button>
       <button onclick="irAGrupo('abdominales')">Abdominales</button>
     </div>
-    <h2>Buscar ejercicio</h2>
+    <h2 id="buscarEjercicioTitulo">Buscar ejercicio</h2>
     <input type="search" id="buscador" placeholder="Ejercicio...">
     <div id="resultados"></div>
-    <div id="usoLocalStorage" style="margin-top: 1em; font-weight: bold;"></div>
-    
-    <button onclick="exportarCSV()">💾 Hacer copia seguridad</button>
+    <!-- Sección de copia de seguridad oculta por defecto -->
+    <div id="backup-section" style="display: none; margin-top: 1em;">
+      <div style="margin-top: 1em; font-weight: bold;"></div> <!-- Espacio en blanco -->
+      
+      <button onclick="exportarCSV()">💾 Hacer copia seguridad</button>
 
-    <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5em; margin-top: 1em;">
-      <p style="font-size: 0.9em; margin: 0;">Restaurar copia de seguridad:</p>
-      <input type="file" id="importFile" onchange="importarCSV(event)" />
+      <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 0.5em; margin-top: 1em;">
+        <p style="font-size: 0.9em; margin: 0;">Restaurar copia de seguridad:</p>
+        <input type="file" id="importFile" onchange="importarCSV(event)" />
+      </div>
+      <div id="storage-usage" style="margin-top: 2em; font-style: italic;"></div>
     </div>
 
+    <!-- Botón de ajustes en la esquina inferior izquierda -->
+    <button id="btn-ajustes" 
+            style="position: fixed; top: 1em; right: 1em; z-index: 1000; padding: 0.5em 1em;">
+      ⋮
+    </button>
   </section>
 
   <!-- Contenido de grupo.html -->
@@ -581,7 +635,7 @@
           let ultimaVisible = 0;
 
           for (let i = 0; i < 10; i++) {
-            const repsVal = parseInt(repsInputs[i]?.value || 0);
+            const repsVal = parseFloat(repsInputs[i]?.value || 0);
             const pesoVal = parseFloat(pesoInputs[i]?.value || 0);
             const mostrar = repsVal > 0 || pesoVal > 0;
             const descanso = descansos[i];
@@ -628,7 +682,7 @@
     const nombre = localStorage.getItem("ejercicioActual");
     const comentario = document.getElementById("comentario").value;
     const orden = parseInt(document.getElementById("orden").value);
-    const reps = Array.from(document.querySelectorAll(".reps")).map(el => parseInt(el.value) || 0);
+    const reps = Array.from(document.querySelectorAll(".reps")).map(el => parseFloat(el.value) || 0);
     const pesos = Array.from(document.querySelectorAll(".peso"));
     const unidades = Array.from(document.querySelectorAll(".unidad"));
     const descMin = Array.from(document.querySelectorAll(".desc-min"));
@@ -663,7 +717,7 @@
   }
 
   function guardarDraft() {
-    const reps = Array.from(document.querySelectorAll(".reps")).map(el => parseInt(el.value) || 0);
+    const reps = Array.from(document.querySelectorAll(".reps")).map(el => parseFloat(el.value) || 0);
     const pesos = Array.from(document.querySelectorAll(".peso")).map(el => parseFloat(el.value) || 0);
     const unidades = Array.from(document.querySelectorAll(".unidad")).map(el => el.value);
     const descMin = Array.from(document.querySelectorAll(".desc-min")).map(el => parseInt(el.value) || 0);
@@ -749,6 +803,7 @@
           if (nombre.toLowerCase().includes(val)) {
             const btn = document.createElement("button");
             btn.textContent = `[${grupo}] ${nombre}`;
+            btn.className = "boton-resultado";
             btn.onclick = () => {
               localStorage.setItem("grupoActual", grupo);
               localStorage.setItem("ejercicioActual", nombre);
@@ -864,7 +919,7 @@
           db[key].push(entry);
         }
 
-        const reps = parseInt(repsStr);
+        const reps = parseFloat(repsStr);
         const pesoVal = peso.trim();
 
         // Solo agregar si reps o peso es válido
@@ -902,6 +957,70 @@
     }
   });
 
+  
+
+     // ---------------------- Calcular uso local storage -----------------------
+  function calcularUsoLocalStorage() {
+    let total = 0;
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const clave = localStorage.key(i);
+      const valor = localStorage.getItem(clave);
+      total += (clave.length + valor.length)*2;
+    }
+
+    const maximo = 5 * 1024 * 1024; // 5 MB
+    const porcentaje = ((total / maximo) * 100).toFixed(2);
+
+    const elemento = document.getElementById("storage-usage");
+    elemento.textContent =
+      `Memoria ocupada: ${porcentaje}% (${(total / 1024).toFixed(2)} KB de 5 MB)`;
+
+    // Cambiar color según porcentaje
+    if (porcentaje < 70) {
+      elemento.style.color = "#32CD32";
+    } else if (porcentaje < 90) {
+      elemento.style.color = "#FFA500";
+    } else {
+      elemento.style.color = "#FF0000";
+    }
+  }
+
+  // Guardamos las funciones originales
+  const originalSetItem = localStorage.setItem;
+  const originalRemoveItem = localStorage.removeItem;
+  const originalClear = localStorage.clear;
+
+  // Sobrescribimos para actualizar después de cada cambio
+  localStorage.setItem = function(key, value) {
+    originalSetItem.apply(this, arguments);
+    calcularUsoLocalStorage();
+  };
+
+  localStorage.removeItem = function(key) {
+    originalRemoveItem.apply(this, arguments);
+    calcularUsoLocalStorage();
+  };
+
+  localStorage.clear = function() {
+    originalClear.apply(this, arguments);
+    calcularUsoLocalStorage();
+  };
+
+  // Mostrar al cargar
+  calcularUsoLocalStorage();
+
+  // Botón ajustes
+    const btnAjustes = document.getElementById('btn-ajustes');
+    const backupSection = document.getElementById('backup-section');
+
+    btnAjustes.addEventListener('click', () => {
+      if (backupSection.style.display === 'none') {
+        backupSection.style.display = 'block';
+      } else {
+        backupSection.style.display = 'none';
+      }
+    });
 </script>
 
 </body>
