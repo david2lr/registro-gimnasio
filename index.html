@@ -261,6 +261,7 @@
     <h2 id="buscarEjercicioTitulo">Buscar ejercicio</h2>
     <input type="search" id="buscador" placeholder="Ejercicio...">
     <div id="resultados"></div>
+    <div id="ultimoEntrenamiento" style="margin-top: 1em; font-weight: bold;"></div>
     <!-- Sección de copia de seguridad oculta por defecto -->
     <div id="backup-section" style="display: none; margin-top: 1em;">
       <div style="margin-top: 1em; font-weight: bold;"></div> <!-- Espacio en blanco -->
@@ -656,6 +657,9 @@
         pesoInputs.forEach(input => input.addEventListener("input", actualizarVisibilidad));
         actualizarVisibilidad();
 
+        // Último entrenamiento
+        mostrarUltimoEntrenamiento();
+        
         // Draft
         repsInputs.forEach(input => input.addEventListener("input", guardarDraft));
         pesoInputs.forEach(input => input.addEventListener("input", guardarDraft));
@@ -1021,6 +1025,63 @@
         backupSection.style.display = 'none';
       }
     });
+
+     // ---------------------- Mostrar último entrenamiento -----------------------
+    function mostrarUltimoEntrenamiento() {
+      const db = getDB(); // tu función para obtener la DB
+      let ultimoTimestamp = 0;
+      let nombreEjercicio = "";
+
+      // Recorrer todos los grupos y ejercicios
+      Object.keys(db).forEach(key => {
+        if (key.endsWith("_data_")) return; // saltar claves de datos individuales
+
+        const ejercicios = db[key];
+        ejercicios.forEach(ej => {
+          const datos = db[`${key}_data_${ej}`] || [];
+          if (datos.length) {
+            const ts = datos[datos.length - 1].timestamp;
+            if (ts > ultimoTimestamp) {
+              ultimoTimestamp = ts;
+              nombreEjercicio = ej;
+            }
+          }
+        });
+      });
+
+      const contenedor = document.getElementById("ultimoEntrenamiento");
+
+      if (!ultimoTimestamp) {
+        contenedor.textContent = "No hay entrenamientos registrados";
+        return;
+      }
+
+      const fechaUltimo = new Date(ultimoTimestamp);
+      const hoy = new Date();
+
+      // Comparar días
+      const diffTime = hoy - fechaUltimo;
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+      let texto = "Último entrenamiento: ";
+
+      if (diffDays === 0) {
+        texto += "hoy";
+      } else if (diffDays === 1) {
+        texto += "ayer";
+      } else {
+        const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+        const diaSemana = diasSemana[fechaUltimo.getDay()];
+        const dd = String(fechaUltimo.getDate()).padStart(2, "0");
+        const mm = String(fechaUltimo.getMonth() + 1).padStart(2, "0");
+        const yyyy = fechaUltimo.getFullYear();
+
+        texto += `${diffDays} días (${diaSemana} ${dd}-${mm}-${yyyy})`;
+      }
+
+      contenedor.textContent = texto;
+    }
+  window.addEventListener("DOMContentLoaded", mostrarUltimoEntrenamiento);
 </script>
 
 </body>
