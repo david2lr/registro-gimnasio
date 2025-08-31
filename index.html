@@ -275,7 +275,7 @@
       <div id="storage-usage" style="margin-top: 2em; font-style: italic;"></div>
     </div>
 
-    <!-- Botón de ajustes en la esquina inferior izquierda -->
+    <!-- Botón de ajustes en la esquina superior derecha -->
     <button id="btn-ajustes" 
             style="position: fixed; top: 1em; right: 1em; z-index: 1000; padding: 0.5em 1em;">
       ⋮
@@ -325,6 +325,10 @@
     });
     document.getElementById(id).classList.remove('hidden');
     localStorage.setItem("seccionActual", id);
+
+    if (id === "inicio") {
+      mostrarDraftsSiExisten();
+    }
   }
   window.onload = () => {
     const seccion = localStorage.getItem("seccionActual") || "inicio";
@@ -361,15 +365,55 @@
   }
 
   // ---------------------- Cargar grupo -----------------------
-  function cargarGrupo() {
+  function cargarGrupo(esDraft = false) {
     const grupo = localStorage.getItem("grupoActual");
     const titulo = document.getElementById("tituloGrupo");
     const contenedor = document.getElementById("ejercicios");
     const db = getDB();
 
     titulo.textContent = grupo.charAt(0).toUpperCase() + grupo.slice(1);
-    contenedor.innerHTML = ""; // limpiar contenido anterior
+    contenedor.innerHTML = ""; 
 
+    if (esDraft || grupo === "drafts") {
+      // 🔹 Mostrar todos los ejercicios guardados como draft
+      const drafts = Object.keys(localStorage).filter(k => k.startsWith("draft_"));
+      drafts.forEach(key => {
+        const partes = key.split("_"); // draft_grupo_nombreEjercicio
+        const nombreEjercicio = partes.slice(2).join("_"); // por si el nombre lleva "_"
+        const btn = document.createElement("button");
+        btn.textContent = nombreEjercicio + " (draft)";
+        btn.classList.add("btn-grupo");
+        btn.style.backgroundColor = "#c94f4f";
+        btn.style.color = "white";
+
+        btn.onclick = () => {
+          let grupo = localStorage.getItem("grupoActual");
+          let nombre = localStorage.getItem("ejercicioActual");
+          // Si venimos del listado de drafts, convertir "draft_<grupo>_<ejercicio>" a sus partes
+          if (grupo === "drafts" && typeof nombre === "string") {
+            const m = key.match(/^draft_([^_]+)_(.*)$/);
+            if (m) {
+              const nombreGrupoMuscular = m[1];
+              const nombreEjercicio = m[2];
+              // Reasignar variables
+              grupo = nombreGrupoMuscular;
+              nombre = nombreEjercicio;
+
+              // (Recomendado) Sincronizar con localStorage para que cargarEjercicio() lo use bien
+              localStorage.setItem("grupoActual", grupo);
+              localStorage.setItem("ejercicioActual", nombre);
+            }
+          }
+          mostrarSeccion("ejercicio");
+          cargarEjercicio(true); // 🔹 otra función que sepa leer de draft
+        };
+
+        contenedor.appendChild(btn);
+      });
+      return; // salimos, no seguimos la lógica normal
+    }
+
+    // --- lógica original ---
     if (!db[grupo]) db[grupo] = [];
 
     db[grupo].sort((a, b) => {
@@ -385,7 +429,6 @@
       btn.textContent = nombre;
       btn.classList.add("btn-grupo");
 
-      // 🔹 Comprobar si hay registro de hoy
       const hoy = new Date();
       const datosEjercicio = db[`${grupo}_data_${nombre}`] || [];
       const ultimo = datosEjercicio.length ? datosEjercicio[datosEjercicio.length - 1].timestamp : null;
@@ -397,16 +440,14 @@
           fechaRegistro.getMonth() === hoy.getMonth() &&
           fechaRegistro.getDate() === hoy.getDate()
         ) {
-          // Si es de hoy, color más intenso
-          //btn.style.backgroundColor = "#005cb2"; //azul intenso
-          btn.style.backgroundColor = "#90ee90"; //verde
+          btn.style.backgroundColor = "#90ee90";
           btn.style.color = "black";
         }
       }
 
       btn.onclick = () => {
         localStorage.setItem("ejercicioActual", nombre);
-        mostrarSeccion('ejercicio');
+        mostrarSeccion("ejercicio");
         cargarEjercicio();
       };
       contenedor.appendChild(btn);
@@ -432,6 +473,7 @@
     const nombre = localStorage.getItem("ejercicioActual");
     const h2 = document.getElementById("nombreEjercicio");
     const contenedor = document.getElementById("contenedorScroll");
+
     h2.textContent = nombre;
     contenedor.innerHTML = "";
 
@@ -1059,8 +1101,12 @@
       const fechaUltimo = new Date(ultimoTimestamp);
       const hoy = new Date();
 
+      // Normalizar a medianoche
+      const inicioUltimo = new Date(fechaUltimo.getFullYear(), fechaUltimo.getMonth(), fechaUltimo.getDate());
+      const inicioHoy = new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+
       // Comparar días
-      const diffTime = hoy - fechaUltimo;
+      const diffTime = inicioHoy - inicioUltimo;
       const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
       let texto = "Último entrenamiento: ";
@@ -1081,6 +1127,41 @@
 
       contenedor.textContent = texto;
     }
+    // ---------------------- Gestión drafts -----------------------
+    function mostrarDraftsSiExisten() {
+      // Contar las keys draft_
+      const drafts = Object.keys(localStorage).filter(k => k.startsWith("draft_"));
+
+      // Buscar si ya existe el botón
+      let botonDraft = document.getElementById("btn-drafts");
+
+      if (drafts.length > 0) {
+        if (!botonDraft) {
+          // Crear botón si no existe
+          botonDraft = document.createElement("button");
+          botonDraft.id = "btn-drafts";
+          botonDraft.style.backgroundColor = "#c94f4f"; // rojo suave
+          botonDraft.style.color = "white";
+          botonDraft.style.marginTop = "0.5em";
+
+          // Insertarlo justo debajo del de Abdominales
+          const btnAbd = document.querySelector("button[onclick=\"irAGrupo('abdominales')\"]");
+          btnAbd.insertAdjacentElement("afterend", botonDraft);
+        }
+
+        // Actualizar texto y acción
+        botonDraft.textContent = `${drafts.length} ejercicios sin guardar`;
+        botonDraft.onclick = () => {
+          localStorage.setItem("grupoActual", "drafts");
+          mostrarSeccion("grupo");
+          cargarGrupo(true); // 🔹 Le pasamos un flag para cargar drafts
+        };
+      } else if (botonDraft) {
+        // Si no hay drafts pero existe el botón → eliminarlo
+        botonDraft.remove();
+      }
+    }
+
   window.addEventListener("DOMContentLoaded", mostrarUltimoEntrenamiento);
 </script>
 
